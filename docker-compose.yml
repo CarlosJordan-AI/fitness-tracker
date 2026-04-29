@@ -17,6 +17,8 @@ services:
       - .env
     environment:
       - POCKETBASE_URL=http://pocketbase:8090
+    volumes:
+      - ./backend:/app
     depends_on:
       - pocketbase
     restart: unless-stopped
