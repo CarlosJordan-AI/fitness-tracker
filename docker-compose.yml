@@ -1,6 +1,13 @@
-version: '3.8'
-
 services:
+  pocketbase:
+    image: ghcr.io/muchobien/pocketbase:latest
+    ports:
+      - "8090:8090"
+    volumes:
+      - pb_data:/pb/pb_data
+    command: [ "serve", "--http=0.0.0.0:8090", "--dir=/pb/pb_data" ]
+    restart: unless-stopped
+
   backend:
     build:
       context: ./backend
@@ -8,6 +15,11 @@ services:
       - "8000:8000"
     env_file:
       - .env
+    environment:
+      - POCKETBASE_URL=http://pocketbase:8090
+    depends_on:
+      - pocketbase
+    restart: unless-stopped
 
   frontend:
     build:
@@ -18,3 +30,7 @@ services:
       - VITE_API_URL=http://localhost:8000
     depends_on:
       - backend
+    restart: unless-stopped
+
+volumes:
+  pb_data:
