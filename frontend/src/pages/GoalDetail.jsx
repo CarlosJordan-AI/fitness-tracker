@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import pb from '../lib/pocketbase';
 import { getGoal, updateGoal, generatePlan, getProgress, logProgress, sendMessage, getChatHistory, getProgressSummary } from '../lib/api';
+import Navbar from '../components/Navbar';
 
 function renderMarkdown(text) {
   if (!text) return '';
@@ -16,6 +17,8 @@ export default function GoalDetail() {
   const [goal, setGoal] = useState(null);
   const [progressLogs, setProgressLogs] = useState([]);
   const [summary, setSummary] = useState(null);
+  const [isMine, setIsMine] = useState(false);
+  const currentUser = pb.authStore.model;
   
   // Progress Form
   const [val, setVal] = useState('');
@@ -39,10 +42,19 @@ export default function GoalDetail() {
 
   const fetchGoalData = async () => {
     try {
-      const g = await getGoal(id);
+      // Fetch goal with expanded user info
+      const res = await fetch(`http://localhost:8000/goals/${id}?expand=user_id`, {
+        headers: { 'Authorization': pb.authStore.token }
+      });
+      const g = await res.json();
       setGoal(g);
+      
+      const mine = g.user_id === currentUser.id;
+      setIsMine(mine);
+
       const p = await getProgress(id);
       setProgressLogs(p.items || []);
+      
       const ch = await getChatHistory(id);
       if (ch.items) {
         setChatHistory(ch.items.map(item => ({
@@ -50,6 +62,7 @@ export default function GoalDetail() {
           text: item.message
         })));
       }
+      
       try {
         const sum = await getProgressSummary(id);
         setSummary(sum);
@@ -62,10 +75,11 @@ export default function GoalDetail() {
   };
 
   const handleGeneratePlan = async () => {
+    if (!isMine) return;
     setLoadingPlan(true);
     try {
       const res = await generatePlan({
-        user_id: pb.authStore.model.id,
+        user_id: currentUser.id,
         goal_id: id,
         goal_title: goal.title,
         category: goal.category,
@@ -83,6 +97,7 @@ export default function GoalDetail() {
   };
 
   const handleLogProgress = async (e) => {
+    if (!isMine) return;
     e.preventDefault();
     try {
       await logProgress({ goal_id: id, value: parseFloat(val), unit, note });
@@ -99,7 +114,7 @@ export default function GoalDetail() {
 
   const handleChat = async (e) => {
     e.preventDefault();
-    if (!chatMsg) return;
+    if (!chatMsg || !isMine) return;
     
     const userMsg = chatMsg;
     setChatMsg('');
@@ -107,7 +122,7 @@ export default function GoalDetail() {
     setIsChatLoading(true);
 
     try {
-      const res = await sendMessage({ user_id: pb.authStore.model.id, goal_id: id, message: userMsg });
+      const res = await sendMessage({ user_id: currentUser.id, goal_id: id, message: userMsg });
       setChatHistory(prev => [...prev, { role: 'assistant', text: res.reply }]);
     } catch (e) {
       console.error(e);
@@ -142,178 +157,209 @@ export default function GoalDetail() {
     return diffTime > 0 ? (diffVal / diffTime) : 0;
   };
 
-  if (!goal) return <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>Loading...</div>;
+  if (!goal) return <div style={{ padding: '20px', textAlign: 'center' }}>Loading goal...</div>;
 
-  const containerStyle = { maxWidth: '800px', margin: '40px auto', padding: '0 20px', fontFamily: 'sans-serif' };
-  const cardStyle = { background: '#f8f9fa', padding: '20px', borderRadius: '8px', marginBottom: '20px' };
-  const btnStyle = { padding: '8px 12px', background: '#007BFF', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' };
-  const inputStyle = { padding: '8px', border: '1px solid #ccc', borderRadius: '4px', marginRight: '10px' };
+  const containerStyle = { maxWidth: '800px', margin: '0 auto', padding: '0 20px', paddingBottom: '40px', fontFamily: 'sans-serif' };
+  const cardStyle = { background: 'white', padding: '25px', borderRadius: '12px', marginBottom: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1px solid #eee' };
+  const btnStyle = { padding: '10px 16px', background: '#007BFF', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' };
+  const inputStyle = { padding: '10px', border: '1px solid #ccc', borderRadius: '6px', fontSize: '14px' };
 
   const trend = summary?.history ? calculateTrend(summary.history) : null;
   const avgWeek = summary?.history ? calculateAvgChangePerWeek(summary.history) : 0;
+  const ownerName = goal.expand?.user_id?.username || goal.expand?.user_id?.email || 'Friend';
 
   return (
-    <div style={containerStyle}>
-      <button style={{...btnStyle, background: '#6c757d', marginBottom: '20px'}} onClick={() => navigate('/dashboard')}>&larr; Back</button>
+    <div style={{ background: '#f8f9fa', minHeight: '100vh' }}>
+      <Navbar />
       
-      <div style={cardStyle}>
-        <h1 style={{ margin: '0 0 10px 0' }}>{goal.title}</h1>
-        <p><strong>Category:</strong> {goal.category} | <strong>Status:</strong> {goal.is_active ? 'Active' : 'Inactive'}</p>
-        <p><strong>Timeline:</strong> {goal.start_date.split(' ')[0]} to {goal.end_date.split(' ')[0]}</p>
-        <p style={{ margin: '10px 0' }}><strong>Description:</strong> {goal.description}</p>
-        
-        {summary && (
-          <div style={{ marginTop: '20px', padding: '15px', background: '#e9ecef', borderRadius: '8px' }}>
-            <h3 style={{ margin: '0 0 10px 0' }}>Overall Progress: {Math.round(summary.progress_percent)}%</h3>
-            <div style={{ background: '#fff', height: '15px', borderRadius: '10px', overflow: 'hidden', marginBottom: '10px' }}>
-              <div style={{ 
-                width: `${Math.round(summary.progress_percent)}%`, 
-                height: '100%', 
-                background: summary.progress_percent >= 50 ? '#28a745' : (summary.progress_percent >= 25 ? '#ffc107' : '#dc3545'),
-                transition: 'width 0.5s ease-in-out'
-              }}></div>
-            </div>
-            <p style={{ margin: 0, fontWeight: 'bold' }}>
-               You are {Math.round(summary.progress_percent)}% toward your goal
-            </p>
-            <p style={{ margin: '5px 0 0 0', color: '#555', fontSize: '14px' }}>
-               {renderEncouragement(summary.progress_percent)}
-            </p>
+      <div style={containerStyle}>
+        {!isMine && (
+          <div style={{ background: '#e3f2fd', color: '#0d47a1', padding: '12px 20px', borderRadius: '8px', marginBottom: '20px', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '10px', border: '1px solid #bbdefb' }}>
+            <span>ℹ️</span> This is <strong>{ownerName}'s</strong> goal. You are in <strong>view-only mode</strong>.
           </div>
         )}
-      </div>
 
-      {summary && summary.primary_logs_count > 0 && (
-        <div style={{...cardStyle, borderLeft: '5px solid #007BFF'}}>
-          <h2 style={{marginTop: 0}}>Metric Analysis: {summary.primary_unit}</h2>
+        <div style={cardStyle}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <h1 style={{ margin: '0 0 10px 0', fontSize: '28px', color: '#333' }}>{goal.title}</h1>
+              <span style={{ background: '#007BFF', color: 'white', padding: '4px 12px', borderRadius: '20px', fontSize: '13px', fontWeight: 'bold' }}>
+                {goal.category.replace('_', ' ')}
+              </span>
+            </div>
+            <div style={{ textAlign: 'right', fontSize: '14px', color: '#666' }}>
+              <div>Managed by <strong>{isMine ? 'You' : ownerName}</strong></div>
+              <div style={{ marginTop: '5px' }}>{goal.is_active ? '✅ Active' : '⏸️ Inactive'}</div>
+            </div>
+          </div>
           
-          <div style={{ display: 'flex', gap: '20px', marginBottom: '20px', flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: '150px', background: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-              <div style={{ fontSize: '12px', color: '#666', textTransform: 'uppercase' }}>Current Trend</div>
-              {trend ? (
-                <div style={{ fontSize: '20px', fontWeight: 'bold', color: trend.isGood ? '#28a745' : '#dc3545' }}>
-                  {trend.direction === 'up' ? '↑' : '↓'} Trending {trend.direction}
-                </div>
-              ) : (
-                <div style={{ color: '#888' }}>Need more data</div>
-              )}
+          <div style={{ marginTop: '20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
+            <div>
+              <strong>Timeline:</strong><br/>
+              <span style={{color: '#555'}}>{new Date(goal.start_date).toLocaleDateString()} to {new Date(goal.end_date).toLocaleDateString()}</span>
             </div>
-            <div style={{ flex: 1, minWidth: '150px', background: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-              <div style={{ fontSize: '12px', color: '#666', textTransform: 'uppercase' }}>Avg Rate/Week</div>
-              <div style={{ fontSize: '20px', fontWeight: 'bold' }}>
-                {avgWeek > 0 ? '+' : ''}{avgWeek.toFixed(2)} {summary.primary_unit}
+            <div style={{ gridColumn: 'span 2' }}>
+              <strong>Mission:</strong><br/>
+              <p style={{ margin: '5px 0', color: '#555', lineHeight: '1.5' }}>{goal.description}</p>
+            </div>
+          </div>
+          
+          {summary && (
+            <div style={{ marginTop: '25px', padding: '20px', background: '#f1f3f5', borderRadius: '10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                <span style={{ fontWeight: 'bold' }}>Progress Journey</span>
+                <span style={{ fontWeight: 'bold', color: '#007BFF' }}>{Math.round(summary.progress_percent)}%</span>
               </div>
+              <div style={{ background: '#dee2e6', height: '14px', borderRadius: '7px', overflow: 'hidden', marginBottom: '10px' }}>
+                <div style={{ 
+                  width: `${Math.round(summary.progress_percent)}%`, 
+                  height: '100%', 
+                  background: summary.progress_percent >= 50 ? '#28a745' : (summary.progress_percent >= 25 ? '#ffc107' : '#dc3545'),
+                  transition: 'width 0.8s ease'
+                }}></div>
+              </div>
+              <p style={{ margin: '10px 0 0 0', fontStyle: 'italic', color: '#495057', fontSize: '14px' }}>
+                 "{renderEncouragement(summary.progress_percent)}"
+              </p>
             </div>
-          </div>
-
-          <table style={{ width: '100%', borderCollapse: 'collapse', background: 'white', borderRadius: '8px', overflow: 'hidden' }}>
-            <thead>
-              <tr style={{ background: '#f1f3f5', textAlign: 'left' }}>
-                <th style={{ padding: '10px' }}>Date</th>
-                <th style={{ padding: '10px' }}>Value</th>
-                <th style={{ padding: '10px' }}>Change</th>
-              </tr>
-            </thead>
-            <tbody>
-              {summary.history.map((h, i) => {
-                const prev = i > 0 ? summary.history[i-1].value : null;
-                const change = prev !== null ? (h.value - prev) : null;
-                return (
-                  <tr key={i} style={{ borderBottom: '1px solid #eee' }}>
-                    <td style={{ padding: '10px', fontSize: '14px' }}>{new Date(h.created).toLocaleDateString()}</td>
-                    <td style={{ padding: '10px', fontWeight: 'bold' }}>{h.value} {h.unit}</td>
-                    <td style={{ padding: '10px', color: change === null ? '#888' : (goal.category === 'weight_loss' ? (change <= 0 ? 'green' : 'red') : (change >= 0 ? 'green' : 'red')) }}>
-                      {change === null ? '--' : `${change > 0 ? '+' : ''}${change.toFixed(1)}`}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      <div style={cardStyle}>
-        <h2>AI Plan</h2>
-        {goal.ai_plan ? (
-          <div 
-            style={{ lineHeight: '1.6' }} 
-            dangerouslySetInnerHTML={{ __html: renderMarkdown(goal.ai_plan) }}
-          />
-        ) : (
-          <div>
-            <p>No plan generated yet.</p>
-            <button style={{...btnStyle, background: '#17a2b8'}} onClick={handleGeneratePlan} disabled={loadingPlan}>
-              {loadingPlan ? 'Generating...' : 'Generate AI Plan'}
-            </button>
-          </div>
-        )}
-      </div>
-
-      <div style={cardStyle}>
-        <h2>Progress Log</h2>
-        <form onSubmit={handleLogProgress} style={{ marginBottom: '20px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-          <input style={{...inputStyle, width: '100px'}} type="number" step="0.1" placeholder="Value" value={val} onChange={e => setVal(e.target.value)} required />
-          <input style={{...inputStyle, width: '100px'}} type="text" placeholder="Unit" value={unit} onChange={e => setUnit(e.target.value)} required />
-          <input style={{...inputStyle, flex: 1, minWidth: '200px'}} type="text" placeholder="Note (optional)" value={note} onChange={e => setNote(e.target.value)} />
-          <button style={{...btnStyle, background: '#28a745'}} type="submit">Log It</button>
-        </form>
-        
-        <ul style={{ listStyle: 'none', padding: 0 }}>
-          {progressLogs.map(log => {
-            const dateObj = new Date(log.created);
-            const formattedDate = dateObj.toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
-            return (
-              <li key={log.id} style={{ marginBottom: '15px', padding: '15px', background: '#fff', borderRadius: '8px', border: '1px solid #ddd' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '1.2em', fontWeight: 'bold' }}>{log.value} {log.unit}</span>
-                  <span style={{ fontSize: '0.9em', color: '#666' }}>{formattedDate}</span>
-                </div>
-                {log.note && <div style={{ marginTop: '8px', fontSize: '0.95em', color: '#555' }}>{log.note}</div>}
-              </li>
-            );
-          })}
-          {progressLogs.length === 0 && <p>No progress logged yet.</p>}
-        </ul>
-      </div>
-
-      <div style={cardStyle}>
-        <h2>Coach Chat</h2>
-        
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '15px', maxHeight: '300px', overflowY: 'auto' }}>
-          {chatHistory.map((msg, i) => (
-            <div key={i} style={{ 
-              alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
-              background: msg.role === 'user' ? '#007BFF' : '#e9ecef',
-              color: msg.role === 'user' ? 'white' : 'black',
-              padding: '10px 15px',
-              borderRadius: '15px',
-              maxWidth: '80%'
-            }}>
-              {msg.role === 'assistant' ? (
-                <div dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.text) }} />
-              ) : (
-                msg.text
-              )}
-            </div>
-          ))}
-          {isChatLoading && (
-             <div style={{ alignSelf: 'flex-start', background: '#e9ecef', padding: '10px 15px', borderRadius: '15px' }}>
-               <em style={{ color: '#555' }}>Coach is thinking...</em>
-             </div>
           )}
         </div>
 
-        <form onSubmit={handleChat} style={{ display: 'flex' }}>
-          <input 
-            style={{...inputStyle, flex: 1}} 
-            type="text" 
-            placeholder="Ask your AI coach a question..." 
-            value={chatMsg} 
-            onChange={e => setChatMsg(e.target.value)} 
-          />
-          <button style={btnStyle} type="submit" disabled={isChatLoading}>Send</button>
-        </form>
+        {summary && summary.primary_logs_count > 0 && (
+          <div style={cardStyle}>
+            <h2 style={{marginTop: 0, fontSize: '20px'}}>Metric Insights ({summary.primary_unit})</h2>
+            
+            <div style={{ display: 'flex', gap: '20px', marginBottom: '20px', flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: '150px', background: '#f8f9fa', padding: '15px', borderRadius: '8px', border: '1px solid #eee' }}>
+                <div style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '5px' }}>Current Trend</div>
+                {trend ? (
+                  <div style={{ fontSize: '18px', fontWeight: 'bold', color: trend.isGood ? '#28a745' : '#dc3545' }}>
+                    {trend.direction === 'up' ? '↑' : '↓'} Trending {trend.direction}
+                  </div>
+                ) : (
+                  <div style={{ color: '#888' }}>Starting out...</div>
+                )}
+              </div>
+              <div style={{ flex: 1, minWidth: '150px', background: '#f8f9fa', padding: '15px', borderRadius: '8px', border: '1px solid #eee' }}>
+                <div style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '5px' }}>Weekly Rate</div>
+                <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#333' }}>
+                  {avgWeek > 0 ? '+' : ''}{avgWeek.toFixed(2)} {summary.primary_unit}/wk
+                </div>
+              </div>
+            </div>
+
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+                <thead>
+                  <tr style={{ background: '#f8f9fa', textAlign: 'left', borderBottom: '2px solid #eee' }}>
+                    <th style={{ padding: '12px' }}>Date</th>
+                    <th style={{ padding: '12px' }}>Reading</th>
+                    <th style={{ padding: '12px' }}>Change</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {summary.history.slice().reverse().map((h, i, arr) => {
+                    // Since we reversed, the 'next' index is actually the previous chronological entry
+                    const chronoPrev = arr[i+1]; 
+                    const change = chronoPrev ? (h.value - chronoPrev.value) : null;
+                    return (
+                      <tr key={i} style={{ borderBottom: '1px solid #f1f1f1' }}>
+                        <td style={{ padding: '12px', color: '#666' }}>{new Date(h.created).toLocaleDateString()}</td>
+                        <td style={{ padding: '12px', fontWeight: 'bold' }}>{h.value} {h.unit}</td>
+                        <td style={{ padding: '12px', color: change === null ? '#999' : (goal.category === 'weight_loss' ? (change <= 0 ? '#28a745' : '#dc3545') : (change >= 0 ? '#28a745' : '#dc3545')) }}>
+                          {change === null ? '--' : `${change > 0 ? '+' : ''}${change.toFixed(1)}`}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        <div style={cardStyle}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+            <h2 style={{ margin: 0, fontSize: '20px' }}>AI Roadmap</h2>
+            {!goal.ai_plan && isMine && (
+              <button style={{...btnStyle, background: '#17a2b8'}} onClick={handleGeneratePlan} disabled={loadingPlan}>
+                {loadingPlan ? 'Architecting...' : 'Generate AI Plan'}
+              </button>
+            )}
+          </div>
+          {goal.ai_plan ? (
+            <div 
+              style={{ lineHeight: '1.7', color: '#444', background: '#fff9db', padding: '15px', borderRadius: '8px', border: '1px solid #ffec99' }} 
+              dangerouslySetInnerHTML={{ __html: renderMarkdown(goal.ai_plan) }}
+            />
+          ) : (
+            <div style={{ color: '#888', fontStyle: 'italic' }}>
+              {isMine ? "You haven't generated an AI plan yet. Let's get started!" : "No AI plan has been generated for this goal yet."}
+            </div>
+          )}
+        </div>
+
+        {isMine && (
+          <div style={cardStyle}>
+            <h2 style={{marginTop: 0, fontSize: '20px'}}>Log Progress</h2>
+            <form onSubmit={handleLogProgress} style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              <input style={{...inputStyle, width: '100px'}} type="number" step="0.1" placeholder="Value" value={val} onChange={e => setVal(e.target.value)} required />
+              <input style={{...inputStyle, width: '100px'}} type="text" placeholder="Unit" value={unit} onChange={e => setUnit(e.target.value)} required />
+              <input style={{...inputStyle, flex: 1, minWidth: '200px'}} type="text" placeholder="Add a note..." value={note} onChange={e => setNote(e.target.value)} />
+              <button style={{...btnStyle, background: '#28a745'}} type="submit">Post Log</button>
+            </form>
+          </div>
+        )}
+
+        <div style={cardStyle}>
+          <h2 style={{marginTop: 0, fontSize: '20px'}}>Coach Dialogue</h2>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px', maxHeight: '400px', overflowY: 'auto', padding: '10px', background: '#fcfcfc', borderRadius: '8px' }}>
+            {chatHistory.length === 0 && <div style={{ textAlign: 'center', color: '#999', padding: '20px' }}>No conversation history yet.</div>}
+            {chatHistory.map((msg, i) => (
+              <div key={i} style={{ 
+                alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                background: msg.role === 'user' ? '#007BFF' : '#f1f3f5',
+                color: msg.role === 'user' ? 'white' : '#333',
+                padding: '12px 18px',
+                borderRadius: '18px',
+                borderBottomRightRadius: msg.role === 'user' ? '2px' : '18px',
+                borderBottomLeftRadius: msg.role === 'user' ? '18px' : '2px',
+                maxWidth: '85%',
+                fontSize: '15px',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+              }}>
+                {msg.role === 'assistant' ? (
+                  <div dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.text) }} />
+                ) : (
+                  msg.text
+                )}
+              </div>
+            ))}
+            {isChatLoading && (
+               <div style={{ alignSelf: 'flex-start', background: '#f1f3f5', padding: '12px 18px', borderRadius: '18px', borderBottomLeftRadius: '2px' }}>
+                 <em style={{ color: '#666' }}>Coach is contemplating...</em>
+               </div>
+            )}
+          </div>
+
+          {isMine ? (
+            <form onSubmit={handleChat} style={{ display: 'flex', gap: '10px' }}>
+              <input 
+                style={{...inputStyle, flex: 1}} 
+                type="text" 
+                placeholder="Ask your coach anything..." 
+                value={chatMsg} 
+                onChange={e => setChatMsg(e.target.value)} 
+              />
+              <button style={btnStyle} type="submit" disabled={isChatLoading}>Send</button>
+            </form>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '15px', background: '#fff9db', borderRadius: '8px', fontSize: '14px', border: '1px solid #ffec99' }}>
+               Coach Chat is private to the goal owner.
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -19,6 +19,8 @@ services:
       - POCKETBASE_URL=http://pocketbase:8090
     volumes:
       - ./backend:/app
+    command: >
+      sh -c "python init_pb.py && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
     depends_on:
       - pocketbase
     restart: unless-stopped

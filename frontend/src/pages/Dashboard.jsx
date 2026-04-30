@@ -2,11 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import pb from '../lib/pocketbase';
 import { getGoals, getProgressSummary } from '../lib/api';
+import Navbar from '../components/Navbar';
 
 export default function Dashboard() {
   const [goals, setGoals] = useState([]);
+  const [filteredGoals, setFilteredGoals] = useState([]);
   const [summaries, setSummaries] = useState({});
+  const [filter, setFilter] = useState('all'); // 'all' or 'my'
   const navigate = useNavigate();
+  const currentUser = pb.authStore.model;
 
   useEffect(() => {
     if (!pb.authStore.isValid) {
@@ -16,11 +20,26 @@ export default function Dashboard() {
     fetchGoals();
   }, [navigate]);
 
+  useEffect(() => {
+    if (filter === 'my') {
+      setFilteredGoals(goals.filter(g => g.user_id === currentUser.id));
+    } else {
+      setFilteredGoals(goals);
+    }
+  }, [filter, goals, currentUser.id]);
+
   const fetchGoals = async () => {
     try {
-      const data = await getGoals();
+      // Get goals with expanded user data
+      const res = await fetch(`http://localhost:8000/goals/?expand=user_id`, {
+        headers: {
+          'Authorization': pb.authStore.token
+        }
+      });
+      const data = await res.json();
       const items = data.items || [];
       setGoals(items);
+      setFilteredGoals(items);
       
       const sums = {};
       await Promise.all(items.map(async goal => {
@@ -36,11 +55,6 @@ export default function Dashboard() {
     }
   };
 
-  const handleLogout = () => {
-    pb.authStore.clear();
-    navigate('/login');
-  };
-
   const getMetricHints = (cat) => {
     if (cat === 'weight_loss') return 'kg/lb';
     if (cat === 'muscle_gain') return 'kg/lb';
@@ -49,77 +63,123 @@ export default function Dashboard() {
     return 'measurements';
   };
 
-  const pageStyle = { fontFamily: 'sans-serif', maxWidth: '800px', margin: '40px auto', padding: '0 20px' };
-  const headerStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center' };
-  const cardStyle = { padding: '15px', margin: '15px 0', border: '1px solid #eee', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', cursor: 'pointer' };
-  const btnStyle = { padding: '10px 15px', background: '#28a745', color: 'white', textDecoration: 'none', borderRadius: '4px', border: 'none', cursor: 'pointer' };
+  const pageStyle = { fontFamily: 'sans-serif', maxWidth: '900px', margin: '0 auto', padding: '0 20px' };
+  const filterBarStyle = { marginBottom: '20px', display: 'flex', gap: '10px' };
+  const filterBtnStyle = (active) => ({
+    padding: '8px 16px',
+    borderRadius: '20px',
+    border: '1px solid #007BFF',
+    background: active ? '#007BFF' : 'white',
+    color: active ? 'white' : '#007BFF',
+    cursor: 'pointer',
+    fontWeight: 'bold',
+    fontSize: '14px'
+  });
+  
+  const cardStyle = (isMine) => ({
+    padding: '15px',
+    margin: '15px 0',
+    border: isMine ? '2px solid #007BFF' : '1px solid #ccc',
+    borderRadius: '12px',
+    boxShadow: isMine ? '0 4px 8px rgba(0,123,255,0.1)' : '0 2px 4px rgba(0,0,0,0.05)',
+    display: 'flex',
+    flexDirection: 'column',
+    cursor: 'pointer',
+    background: 'white',
+    transition: 'transform 0.2s',
+    ':hover': { transform: 'translateY(-2px)' }
+  });
+
+  const btnStyle = { padding: '10px 15px', background: '#28a745', color: 'white', textDecoration: 'none', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold' };
 
   return (
-    <div style={pageStyle}>
-      <div style={headerStyle}>
-        <h2>Fitness Goals Dashboard</h2>
-        <div>
-          <button style={{...btnStyle, marginRight: '10px'}} onClick={() => navigate('/goals/new')}>+ New Goal</button>
-          <button style={{...btnStyle, background: '#dc3545'}} onClick={handleLogout}>Logout</button>
-        </div>
-      </div>
+    <div style={{ background: '#f4f7f6', minHeight: '100vh', paddingBottom: '40px' }}>
+      <Navbar />
       
-      <div>
-        {goals.map(goal => {
-          const sum = summaries[goal.id];
-          const pct = sum ? Math.round(sum.progress_percent) : 0;
-          let barColor = '#dc3545'; // red
-          if (pct >= 50) barColor = '#28a745'; // green
-          else if (pct >= 25) barColor = '#ffc107'; // yellow
+      <div style={pageStyle}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <h2>Community Goals</h2>
+          <button style={btnStyle} onClick={() => navigate('/goals/new')}>+ Create Goal</button>
+        </div>
 
-          return (
-            <div key={goal.id} style={cardStyle} onClick={() => navigate(`/goals/${goal.id}`)}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                <div>
-                  <h3 style={{ margin: '0 0 5px 0' }}>{goal.title}</h3>
-                  <p style={{ margin: 0, color: '#555', fontSize: '14px' }}>User: {goal.expand?.user_id?.email || goal.user_id}</p>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <span style={{ background: '#e9ecef', padding: '4px 8px', borderRadius: '12px', fontSize: '12px', marginRight: '10px' }}>{goal.category}</span>
-                  <span style={{ color: goal.is_active ? 'green' : 'gray', fontWeight: 'bold' }}>{goal.is_active ? 'Active' : 'Inactive'}</span>
-                </div>
-              </div>
-              
-              {sum ? (
-                <div style={{ marginTop: '5px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.9em', marginBottom: '5px' }}>
-                    {sum.primary_logs_count > 0 ? (
-                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                        <span style={{ fontWeight: 'bold' }}>{sum.first_value} {sum.primary_unit} &rarr; {sum.latest_value} {sum.primary_unit}</span>
-                        <span style={{ 
-                          color: (goal.category === 'weight_loss' ? (sum.total_change <= 0 ? '#28a745' : '#dc3545') : (sum.total_change >= 0 ? '#28a745' : '#dc3545')),
-                          fontWeight: 'bold',
-                          background: (goal.category === 'weight_loss' ? (sum.total_change <= 0 ? '#e8f5e9' : '#ffebee') : (sum.total_change >= 0 ? '#e8f5e9' : '#ffebee')),
-                          padding: '2px 6px',
-                          borderRadius: '4px'
-                        }}>
-                          {sum.total_change > 0 ? '+' : ''}{sum.total_change.toFixed(1)} {sum.primary_unit}
+        <div style={filterBarStyle}>
+          <button style={filterBtnStyle(filter === 'all')} onClick={() => setFilter('all')}>All Goals</button>
+          <button style={filterBtnStyle(filter === 'my')} onClick={() => setFilter('my')}>My Goals</button>
+        </div>
+        
+        <div>
+          {filteredGoals.map(goal => {
+            const isMine = goal.user_id === currentUser.id;
+            const sum = summaries[goal.id];
+            const pct = sum ? Math.round(sum.progress_percent) : 0;
+            let barColor = '#dc3545'; // red
+            if (pct >= 50) barColor = '#28a745'; // green
+            else if (pct >= 25) barColor = '#ffc107'; // yellow
+
+            // Get owner name
+            const owner = goal.expand?.user_id?.username || goal.expand?.user_id?.email || 'Anonymous';
+
+            return (
+              <div key={goal.id} style={cardStyle(isMine)} onClick={() => navigate(`/goals/${goal.id}`)}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+                  <div>
+                    <h3 style={{ margin: '0 0 5px 0', color: '#333' }}>{goal.title}</h3>
+                    <div style={{ fontSize: '13px', color: '#666', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <span style={{ fontWeight: 'bold', color: isMine ? '#007BFF' : '#555' }}>
+                        {isMine ? 'You' : owner}
+                      </span>
+                      {goal.category && (
+                        <span style={{ background: '#e9ecef', padding: '2px 8px', borderRadius: '10px', fontSize: '11px' }}>
+                          {goal.category.replace('_', ' ')}
                         </span>
-                      </div>
-                    ) : (
-                      <em style={{color: '#888'}}>Log your [{getMetricHints(goal.category)}] to track progress</em>
-                    )}
-                    <span style={{ fontWeight: 'bold' }}>{pct}%</span>
+                      )}
+                    </div>
                   </div>
-                  <div style={{ background: '#e9ecef', height: '10px', borderRadius: '5px', overflow: 'hidden' }}>
-                    <div style={{ width: `${pct}%`, height: '100%', background: barColor, transition: 'width 0.5s ease-in-out' }}></div>
-                  </div>
-                  <div style={{ fontSize: '11px', color: '#777', marginTop: '5px' }}>
-                     {sum.primary_logs_count} primary / {sum.all_logs_count} total measurements logged
+                  <div style={{ textAlign: 'right' }}>
+                    <span style={{ color: goal.is_active ? '#28a745' : '#777', fontWeight: 'bold', fontSize: '12px' }}>
+                      {goal.is_active ? '● Active' : '● Inactive'}
+                    </span>
                   </div>
                 </div>
-              ) : (
-                <div style={{ fontSize: '0.9em', color: '#888' }}>Loading progress...</div>
-              )}
+                
+                {sum ? (
+                  <div style={{ marginTop: '5px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.9em', marginBottom: '8px' }}>
+                      {sum.primary_logs_count > 0 ? (
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          <span style={{ fontWeight: '500' }}>{sum.first_value}{sum.primary_unit} &rarr; {sum.latest_value}{sum.primary_unit}</span>
+                          <span style={{ 
+                            color: (goal.category === 'weight_loss' ? (sum.total_change <= 0 ? '#28a745' : '#dc3545') : (sum.total_change >= 0 ? '#28a745' : '#dc3545')),
+                            fontWeight: 'bold',
+                            fontSize: '13px'
+                          }}>
+                            ({sum.total_change > 0 ? '+' : ''}{sum.total_change.toFixed(1)}{sum.primary_unit})
+                          </span>
+                        </div>
+                      ) : (
+                        <em style={{color: '#999', fontSize: '13px'}}>Needs [{getMetricHints(goal.category)}] logs</em>
+                      )}
+                      <span style={{ fontWeight: 'bold', color: '#333' }}>{pct}%</span>
+                    </div>
+                    <div style={{ background: '#eee', height: '8px', borderRadius: '4px', overflow: 'hidden' }}>
+                      <div style={{ width: `${pct}%`, height: '100%', background: barColor, transition: 'width 0.6s ease' }}></div>
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#888', marginTop: '8px' }}>
+                       {sum.primary_logs_count} log entries
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ fontSize: '0.85em', color: '#999', marginTop: '10px' }}>Analyzing progress...</div>
+                )}
+              </div>
+            );
+          })}
+          {filteredGoals.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '40px', color: '#777' }}>
+              {filter === 'my' ? "You haven't created any goals yet." : "No goals found in the community."}
             </div>
-          );
-        })}
-        {goals.length === 0 && <p>No goals found. Create one!</p>}
+          )}
+        </div>
       </div>
     </div>
   );
