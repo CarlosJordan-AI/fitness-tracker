@@ -1,0 +1,62 @@
+INFO:     172.18.0.1:57734 - "OPTIONS /goals/ HTTP/1.1" 200 OK
+INFO:     172.18.0.1:57744 - "OPTIONS /goals/ HTTP/1.1" 200 OK
+INFO:     172.18.0.1:57734 - "GET /goals/ HTTP/1.1" 200 OK
+INFO:     172.18.0.1:57744 - "GET /goals/ HTTP/1.1" 200 OK
+INFO:     172.18.0.1:57734 - "OPTIONS /progress/r6e5a1hwqfecpsf/summary HTTP/1.1" 200 OK
+INFO:     172.18.0.1:57744 - "OPTIONS /progress/r6e5a1hwqfecpsf/summary HTTP/1.1" 200 OK
+INFO:     172.18.0.1:57734 - "GET /progress/r6e5a1hwqfecpsf/summary HTTP/1.1" 200 OK
+INFO:     172.18.0.1:57744 - "GET /progress/r6e5a1hwqfecpsf/summary HTTP/1.1" 200 OK
+INFO:     172.18.0.1:57760 - "OPTIONS /goals/r6e5a1hwqfecpsf HTTP/1.1" 200 OK
+INFO:     172.18.0.1:36128 - "OPTIONS /goals/r6e5a1hwqfecpsf HTTP/1.1" 200 OK
+INFO:     172.18.0.1:57760 - "GET /goals/r6e5a1hwqfecpsf HTTP/1.1" 200 OK
+INFO:     172.18.0.1:57760 - "OPTIONS /progress/r6e5a1hwqfecpsf HTTP/1.1" 200 OK
+INFO:     172.18.0.1:36128 - "GET /goals/r6e5a1hwqfecpsf HTTP/1.1" 200 OK
+INFO:     172.18.0.1:36128 - "OPTIONS /progress/r6e5a1hwqfecpsf HTTP/1.1" 200 OK
+INFO:     172.18.0.1:57760 - "GET /progress/r6e5a1hwqfecpsf HTTP/1.1" 200 OK
+INFO:     172.18.0.1:57760 - "OPTIONS /chat/history/r6e5a1hwqfecpsf HTTP/1.1" 200 OK
+INFO:     172.18.0.1:36128 - "GET /progress/r6e5a1hwqfecpsf HTTP/1.1" 200 OK
+INFO:     172.18.0.1:36128 - "OPTIONS /chat/history/r6e5a1hwqfecpsf HTTP/1.1" 200 OK
+INFO:     172.18.0.1:57760 - "GET /chat/history/r6e5a1hwqfecpsf HTTP/1.1" 200 OK
+INFO:     172.18.0.1:57760 - "OPTIONS /progress/r6e5a1hwqfecpsf/summary HTTP/1.1" 200 OK
+INFO:     172.18.0.1:36128 - "GET /chat/history/r6e5a1hwqfecpsf HTTP/1.1" 200 OK
+INFO:     172.18.0.1:36128 - "OPTIONS /progress/r6e5a1hwqfecpsf/summary HTTP/1.1" 200 OK
+INFO:     172.18.0.1:57760 - "GET /progress/r6e5a1hwqfecpsf/summary HTTP/1.1" 200 OK
+INFO:     172.18.0.1:36128 - "GET /progress/r6e5a1hwqfecpsf/summary HTTP/1.1" 200 OK
+INFO:     172.18.0.1:57038 - "OPTIONS /goals/ HTTP/1.1" 200 OK
+INFO:     172.18.0.1:57054 - "OPTIONS /goals/ HTTP/1.1" 200 OK
+INFO:     172.18.0.1:57038 - "GET /goals/ HTTP/1.1" 200 OK
+INFO:     172.18.0.1:57054 - "GET /goals/ HTTP/1.1" 200 OK
+INFO:     172.18.0.1:57038 - "OPTIONS /progress/r6e5a1hwqfecpsf/summary HTTP/1.1" 200 OK
+INFO:     172.18.0.1:57054 - "OPTIONS /progress/r6e5a1hwqfecpsf/summary HTTP/1.1" 200 OK
+INFO:     172.18.0.1:57038 - "GET /progress/r6e5a1hwqfecpsf/summary HTTP/1.1" 200 OK
+INFO:     172.18.0.1:57054 - "GET /progress/r6e5a1hwqfecpsf/summary HTTP/1.1" 200 OK
+INFO:     172.18.0.1:36462 - "OPTIONS /goals/r6e5a1hwqfecpsf HTTP/1.1" 200 OK
+INFO:     172.18.0.1:36468 - "OPTIONS /goals/r6e5a1hwqfecpsf HTTP/1.1" 200 OK
+INFO:     172.18.0.1:36468 - "GET /goals/r6e5a1hwqfecpsf HTTP/1.1" 200 OK
+INFO:     172.18.0.1:36462 - "GET /goals/r6e5a1hwqfecpsf HTTP/1.1" 200 OK
+INFO:     172.18.0.1:36468 - "OPTIONS /progress/r6e5a1hwqfecpsf HTTP/1.1" 200 OK
+INFO:     172.18.0.1:36462 - "OPTIONS /progress/r6e5a1hwqfecpsf HTTP/1.1" 200 OK
+INFO:     172.18.0.1:36468 - "GET /progress/r6e5a1hwqfecpsf HTTP/1.1" 200 OK
+INFO:     172.18.0.1:36468 - "OPTIONS /chat/history/r6e5a1hwqfecpsf HTTP/1.1" 200 OK
+INFO:     172.18.0.1:36462 - "GET /progress/r6e5a1hwqfecpsf HTTP/1.1" 200 OK
+INFO:     172.18.0.1:36462 - "OPTIONS /chat/history/r6e5a1hwqfecpsf HTTP/1.1" 200 OK
+INFO:     172.18.0.1:36468 - "GET /chat/history/r6e5a1hwqfecpsf HTTP/1.1" 200 OK
+INFO:     172.18.0.1:36468 - "OPTIONS /progress/r6e5a1hwqfecpsf/summary HTTP/1.1" 200 OK
+INFO:     172.18.0.1:36462 - "GET /chat/history/r6e5a1hwqfecpsf HTTP/1.1" 200 OK
+INFO:     172.18.0.1:36462 - "OPTIONS /progress/r6e5a1hwqfecpsf/summary HTTP/1.1" 200 OK
+INFO:     172.18.0.1:36468 - "GET /progress/r6e5a1hwqfecpsf/summary HTTP/1.1" 200 OK
+INFO:     172.18.0.1:36462 - "GET /progress/r6e5a1hwqfecpsf/summary HTTP/1.1" 200 OK
+
+/app/app/routers/chat.py:6: FutureWarning: 
+
+All support for the `google.generativeai` package has ended. It will no longer be receiving 
+updates or bug fixes. Please switch to the `google.genai` package as soon as possible.
+See README for more details:
+
+https://github.com/google-gemini/deprecated-generative-ai-python/blob/main/README.md
+
+  import google.generativeai as genai
+INFO:     Started server process [1]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
