@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Header
 from pydantic import BaseModel
 from typing import Optional
 import httpx
@@ -15,21 +15,24 @@ class ProgressCreate(BaseModel):
     note: Optional[str] = None
 
 @router.get("/{goal_id}")
-async def get_progress(goal_id: str):
+async def get_progress(goal_id: str, authorization: Optional[str] = Header(None)):
+    headers = {"Authorization": authorization} if authorization else {}
     async with httpx.AsyncClient() as client:
         response = await client.get(
             f"{PB_URL}/api/collections/progress_logs/records",
             params={
                 "filter": f'goal_id="{goal_id}"',
                 "sort": "-created"
-            }
+            },
+            headers=headers
         )
         if response.status_code != 200:
             raise HTTPException(status_code=400, detail="Failed to fetch progress")
         return response.json()
 
 @router.post("/")
-async def log_progress(progress: ProgressCreate):
+async def log_progress(progress: ProgressCreate, authorization: Optional[str] = Header(None)):
+    headers = {"Authorization": authorization} if authorization else {}
     async with httpx.AsyncClient() as client:
         response = await client.post(
             f"{PB_URL}/api/collections/progress_logs/records",
@@ -38,7 +41,8 @@ async def log_progress(progress: ProgressCreate):
                 "value": progress.value,
                 "unit": progress.unit,
                 "note": progress.note
-            }
+            },
+            headers=headers
         )
         if response.status_code != 200:
             raise HTTPException(status_code=400, detail="Failed to log progress")

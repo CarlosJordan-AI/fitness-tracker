@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Header
 from pydantic import BaseModel
 from typing import Optional
 import httpx
@@ -23,29 +23,34 @@ class GoalUpdate(BaseModel):
     ai_plan: Optional[str] = None
 
 @router.get("/")
-async def get_goals():
+async def get_goals(authorization: Optional[str] = Header(None)):
+    headers = {"Authorization": authorization} if authorization else {}
     async with httpx.AsyncClient() as client:
         response = await client.get(
             f"{PB_URL}/api/collections/goals/records",
-            params={"expand": "user_id", "sort": "-created"}
+            params={"expand": "user_id", "sort": "-created"},
+            headers=headers
         )
         if response.status_code != 200:
             raise HTTPException(status_code=response.status_code, detail="Failed to fetch goals")
         return response.json()
 
 @router.get("/{goal_id}")
-async def get_goal(goal_id: str):
+async def get_goal(goal_id: str, authorization: Optional[str] = Header(None)):
+    headers = {"Authorization": authorization} if authorization else {}
     async with httpx.AsyncClient() as client:
         response = await client.get(
             f"{PB_URL}/api/collections/goals/records/{goal_id}",
-            params={"expand": "user_id"}
+            params={"expand": "user_id"},
+            headers=headers
         )
         if response.status_code != 200:
             raise HTTPException(status_code=404, detail="Goal not found")
         return response.json()
 
 @router.post("/")
-async def create_goal(goal: GoalCreate):
+async def create_goal(goal: GoalCreate, authorization: Optional[str] = Header(None)):
+    headers = {"Authorization": authorization} if authorization else {}
     async with httpx.AsyncClient() as client:
         response = await client.post(
             f"{PB_URL}/api/collections/goals/records",
@@ -57,18 +62,21 @@ async def create_goal(goal: GoalCreate):
                 "start_date": goal.start_date,
                 "end_date": goal.end_date,
                 "is_active": True
-            }
+            },
+            headers=headers
         )
         if response.status_code != 200:
-            raise HTTPException(status_code=400, detail="Failed to create goal")
+            raise HTTPException(status_code=400, detail=response.text)
         return response.json()
 
 @router.patch("/{goal_id}")
-async def update_goal(goal_id: str, goal: GoalUpdate):
+async def update_goal(goal_id: str, goal: GoalUpdate, authorization: Optional[str] = Header(None)):
+    headers = {"Authorization": authorization} if authorization else {}
     async with httpx.AsyncClient() as client:
         response = await client.patch(
             f"{PB_URL}/api/collections/goals/records/{goal_id}",
-            json=goal.model_dump(exclude_none=True)
+            json=goal.model_dump(exclude_none=True),
+            headers=headers
         )
         if response.status_code != 200:
             raise HTTPException(status_code=400, detail="Failed to update goal")
