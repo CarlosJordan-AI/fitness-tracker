@@ -20,8 +20,8 @@ class ChatMessage(BaseModel):
 class PlanRequest(BaseModel):
     user_id: str
     goal_id: str
-    goal_title: str
-    category: str
+    goal_title: Optional[str] = "Goal"
+    category: Optional[str] = "Fitness"
     description: Optional[str] = None
 
 
@@ -33,7 +33,7 @@ async def generate_plan(request: PlanRequest, authorization: Optional[str] = Hea
     if not GEMINI_API_KEY:
         raise HTTPException(status_code=500, detail="Gemini API key not configured")
     genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel("gemini-2.5-flash")
+    model = genai.GenerativeModel("gemini-1.5-flash")
     prompt = f"Fitness coach: 3-month plan for {request.goal_title}, {request.category}. Max 400 words. At the end, output a valid JSON block like {{\"target_value\": 150.0, \"target_unit\": \"lbs\", \"direction\": \"decrease\"}}"
     try:
         response = model.generate_content(prompt)
@@ -142,7 +142,7 @@ async def get_history(goal_id: str, authorization: Optional[str] = Header(None))
     async with httpx.AsyncClient() as client:
         r = await client.get(
             f"{PB_URL}/api/collections/ai_chats/records",
-            params={"filter": f'goal_id = "{goal_id}"', "sort": "created"},
+            params={"filter": f'goal_id="{goal_id}"', "sort": "created"},
             headers=headers
         )
         return r.json()
