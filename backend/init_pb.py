@@ -48,7 +48,7 @@ async def init_pocketbase():
                 admin_headers = {"Authorization": token}
                 print("Authenticated as admin. Setting collection rules...")
 
-                # Set rules for 'goals'
+                # Set rules and schema for 'goals'
                 await client.patch(
                     f"{PB_URL}/api/collections/goals",
                     json={
@@ -56,7 +56,18 @@ async def init_pocketbase():
                         "viewRule": "@request.auth.id != \"\"",
                         "createRule": "@request.auth.id != \"\"",
                         "updateRule": "user_id = @request.auth.id",
-                        "deleteRule": "user_id = @request.auth.id"
+                        "deleteRule": "user_id = @request.auth.id",
+                        "schema": [
+                            {"name": "user_id", "type": "relation", "required": True, "options": {"collectionId": "_pb_users_auth_", "maxSelect": 1}},
+                            {"name": "title", "type": "text", "required": True},
+                            {"name": "category", "type": "text", "required": True},
+                            {"name": "description", "type": "text"},
+                            {"name": "start_date", "type": "date", "required": True},
+                            {"name": "end_date", "type": "date", "required": True},
+                            {"name": "is_active", "type": "bool"},
+                            {"name": "target_value", "type": "number"},
+                            {"name": "ai_plan", "type": "text"}
+                        ]
                     },
                     headers=admin_headers
                 )

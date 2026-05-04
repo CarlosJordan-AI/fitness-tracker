@@ -184,7 +184,7 @@ export default function GoalDetail() {
             <div>
               <h1 style={{ margin: '0 0 10px 0', fontSize: '28px', color: '#333' }}>{goal.title}</h1>
               <span style={{ background: '#007BFF', color: 'white', padding: '4px 12px', borderRadius: '20px', fontSize: '13px', fontWeight: 'bold' }}>
-                {goal.category.replace('_', ' ')}
+                {goal.category?.replace('_', ' ')}
               </span>
             </div>
             <div style={{ textAlign: 'right', fontSize: '14px', color: '#666' }}>
