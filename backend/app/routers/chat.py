@@ -47,9 +47,11 @@ async def generate_plan(request: PlanRequest, authorization: Optional[str] = Hea
                 target_value = meta.get("target_value")
                 target_unit = meta.get("target_unit")
                 direction = meta.get("direction")
-                plan_text = text[:json_match.start()].strip()
+                plan_text = text[:json_match.start()].strip().rstrip("```json").rstrip("```").strip().rstrip("```json").rstrip("```").strip()
             except:
                 pass
+        plan_text = plan_text.split("```json")[0].split("```")[0].strip()
+        plan_text = plan_text.split("```json")[0].split("```")[0].strip()
         return {"plan": plan_text, "target_value": target_value, "target_unit": target_unit, "direction": direction}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
