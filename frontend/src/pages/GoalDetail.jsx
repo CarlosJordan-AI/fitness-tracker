@@ -7,7 +7,11 @@ import Navbar from '../components/Navbar';
 function renderMarkdown(text) {
   if (!text) return '';
   return text
+    .replace(/### (.*?)(\n|$)/g, '<h3 style="margin:16px 0 8px 0;font-size:18px;color:#333">$1</h3>')
+    .replace(/## (.*?)(\n|$)/g, '<h2 style="margin:20px 0 8px 0;font-size:20px;color:#333">$2</h2>')
+    .replace(/# (.*?)(\n|$)/g, '<h1 style="margin:20px 0 8px 0;font-size:24px;color:#333">$1</h1>')
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/^\* (.*)/gm, '<li style="margin:4px 0;margin-left:20px">$1</li>')
     .replace(/\n/g, '<br/>');
 }
 
@@ -19,17 +23,17 @@ export default function GoalDetail() {
   const [summary, setSummary] = useState(null);
   const [isMine, setIsMine] = useState(false);
   const currentUser = pb.authStore.model;
-  
+
   // Progress Form
   const [val, setVal] = useState('');
   const [unit, setUnit] = useState('');
   const [note, setNote] = useState('');
-  
+
   // Chat
   const [chatMsg, setChatMsg] = useState('');
   const [chatHistory, setChatHistory] = useState([]);
   const [isChatLoading, setIsChatLoading] = useState(false);
-  
+
   const [loadingPlan, setLoadingPlan] = useState(false);
 
   useEffect(() => {
@@ -48,13 +52,13 @@ export default function GoalDetail() {
       });
       const g = await res.json();
       setGoal(g);
-      
+
       const mine = g.user_id === currentUser.id;
       setIsMine(mine);
 
       const p = await getProgress(id);
       setProgressLogs(p.items || []);
-      
+
       const ch = await getChatHistory(id);
       if (ch.items) {
         setChatHistory(ch.items.map(item => ({
@@ -62,11 +66,11 @@ export default function GoalDetail() {
           text: item.message
         })));
       }
-      
+
       try {
         const sum = await getProgressSummary(id);
         setSummary(sum);
-      } catch(err) {
+      } catch (err) {
         console.error(err);
       }
     } catch (e) {
@@ -115,7 +119,7 @@ export default function GoalDetail() {
   const handleDelete = async () => {
     if (!isMine) return;
     if (!window.confirm("Are you sure you want to delete this goal and all its progress? This action cannot be undone.")) return;
-    
+
     try {
       await deleteGoal(id);
       navigate('/dashboard');
@@ -128,7 +132,7 @@ export default function GoalDetail() {
   const handleChat = async (e) => {
     e.preventDefault();
     if (!chatMsg || !isMine) return;
-    
+
     const userMsg = chatMsg;
     setChatMsg('');
     setChatHistory(prev => [...prev, { role: 'user', text: userMsg }]);
@@ -184,7 +188,7 @@ export default function GoalDetail() {
   return (
     <div style={{ background: '#f8f9fa', minHeight: '100vh' }}>
       <Navbar />
-      
+
       <div style={containerStyle}>
         {!isMine && (
           <div style={{ background: '#e3f2fd', color: '#0d47a1', padding: '12px 20px', borderRadius: '8px', marginBottom: '20px', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '10px', border: '1px solid #bbdefb' }}>
@@ -204,15 +208,15 @@ export default function GoalDetail() {
               <div>Managed by <strong>{isMine ? 'You' : ownerName}</strong></div>
               <div style={{ marginTop: '5px' }}>{goal.is_active ? '✅ Active' : '⏸️ Inactive'}</div>
               {isMine && (
-                <button 
+                <button
                   onClick={handleDelete}
-                  style={{ 
-                    marginTop: '10px', 
-                    padding: '5px 10px', 
-                    background: '#fff', 
-                    color: '#dc3545', 
-                    border: '1px solid #dc3545', 
-                    borderRadius: '4px', 
+                  style={{
+                    marginTop: '10px',
+                    padding: '5px 10px',
+                    background: '#fff',
+                    color: '#dc3545',
+                    border: '1px solid #dc3545',
+                    borderRadius: '4px',
                     cursor: 'pointer',
                     fontSize: '12px'
                   }}
@@ -222,18 +226,18 @@ export default function GoalDetail() {
               )}
             </div>
           </div>
-          
+
           <div style={{ marginTop: '20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
             <div>
-              <strong>Timeline:</strong><br/>
-              <span style={{color: '#555'}}>{new Date(goal.start_date).toLocaleDateString()} to {new Date(goal.end_date).toLocaleDateString()}</span>
+              <strong>Timeline:</strong><br />
+              <span style={{ color: '#555' }}>{new Date(goal.start_date).toLocaleDateString()} to {new Date(goal.end_date).toLocaleDateString()}</span>
             </div>
             <div style={{ gridColumn: 'span 2' }}>
-              <strong>Mission:</strong><br/>
+              <strong>Mission:</strong><br />
               <p style={{ margin: '5px 0', color: '#555', lineHeight: '1.5' }}>{goal.description}</p>
             </div>
           </div>
-          
+
           {summary && (
             <div style={{ marginTop: '25px', padding: '20px', background: '#f1f3f5', borderRadius: '10px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
@@ -241,15 +245,15 @@ export default function GoalDetail() {
                 <span style={{ fontWeight: 'bold', color: '#007BFF' }}>{Math.round(summary.progress_percent)}%</span>
               </div>
               <div style={{ background: '#dee2e6', height: '14px', borderRadius: '7px', overflow: 'hidden', marginBottom: '10px' }}>
-                <div style={{ 
-                  width: `${Math.round(summary.progress_percent)}%`, 
-                  height: '100%', 
+                <div style={{
+                  width: `${Math.round(summary.progress_percent)}%`,
+                  height: '100%',
                   background: summary.progress_percent >= 50 ? '#28a745' : (summary.progress_percent >= 25 ? '#ffc107' : '#dc3545'),
                   transition: 'width 0.8s ease'
                 }}></div>
               </div>
               <p style={{ margin: '10px 0 0 0', fontStyle: 'italic', color: '#495057', fontSize: '14px' }}>
-                 "{renderEncouragement(summary.progress_percent)}"
+                "{renderEncouragement(summary.progress_percent)}"
               </p>
             </div>
           )}
@@ -257,8 +261,8 @@ export default function GoalDetail() {
 
         {summary && summary.primary_logs_count > 0 && (
           <div style={cardStyle}>
-            <h2 style={{marginTop: 0, fontSize: '20px'}}>Metric Insights ({summary.primary_unit})</h2>
-            
+            <h2 style={{ marginTop: 0, fontSize: '20px' }}>Metric Insights ({summary.primary_unit})</h2>
+
             <div style={{ display: 'flex', gap: '20px', marginBottom: '20px', flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: '150px', background: '#f8f9fa', padding: '15px', borderRadius: '8px', border: '1px solid #eee' }}>
                 <div style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '5px' }}>Current Trend</div>
@@ -290,7 +294,7 @@ export default function GoalDetail() {
                 <tbody>
                   {summary.history.slice().reverse().map((h, i, arr) => {
                     // Since we reversed, the 'next' index is actually the previous chronological entry
-                    const chronoPrev = arr[i+1]; 
+                    const chronoPrev = arr[i + 1];
                     const change = chronoPrev ? (h.value - chronoPrev.value) : null;
                     return (
                       <tr key={i} style={{ borderBottom: '1px solid #f1f1f1' }}>
@@ -312,14 +316,14 @@ export default function GoalDetail() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
             <h2 style={{ margin: 0, fontSize: '20px' }}>AI Roadmap</h2>
             {!goal.ai_plan && isMine && (
-              <button style={{...btnStyle, background: '#17a2b8'}} onClick={handleGeneratePlan} disabled={loadingPlan}>
+              <button style={{ ...btnStyle, background: '#17a2b8' }} onClick={handleGeneratePlan} disabled={loadingPlan}>
                 {loadingPlan ? 'Architecting...' : 'Generate AI Plan'}
               </button>
             )}
           </div>
           {goal.ai_plan ? (
-            <div 
-              style={{ lineHeight: '1.7', color: '#444', background: '#fff9db', padding: '15px', borderRadius: '8px', border: '1px solid #ffec99' }} 
+            <div
+              style={{ lineHeight: '1.7', color: '#444', background: '#fff9db', padding: '15px', borderRadius: '8px', border: '1px solid #ffec99' }}
               dangerouslySetInnerHTML={{ __html: renderMarkdown(goal.ai_plan) }}
             />
           ) : (
@@ -331,23 +335,23 @@ export default function GoalDetail() {
 
         {isMine && (
           <div style={cardStyle}>
-            <h2 style={{marginTop: 0, fontSize: '20px'}}>Log Progress</h2>
+            <h2 style={{ marginTop: 0, fontSize: '20px' }}>Log Progress</h2>
             <form onSubmit={handleLogProgress} style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              <input style={{...inputStyle, width: '100px'}} type="number" step="0.1" placeholder="Value" value={val} onChange={e => setVal(e.target.value)} required />
-              <input style={{...inputStyle, width: '100px'}} type="text" placeholder="Unit" value={unit} onChange={e => setUnit(e.target.value)} required />
-              <input style={{...inputStyle, flex: 1, minWidth: '200px'}} type="text" placeholder="Add a note..." value={note} onChange={e => setNote(e.target.value)} />
-              <button style={{...btnStyle, background: '#28a745'}} type="submit">Post Log</button>
+              <input style={{ ...inputStyle, width: '100px' }} type="number" step="0.1" placeholder="Value" value={val} onChange={e => setVal(e.target.value)} required />
+              <input style={{ ...inputStyle, width: '100px' }} type="text" placeholder="Unit" value={unit} onChange={e => setUnit(e.target.value)} required />
+              <input style={{ ...inputStyle, flex: 1, minWidth: '200px' }} type="text" placeholder="Add a note..." value={note} onChange={e => setNote(e.target.value)} />
+              <button style={{ ...btnStyle, background: '#28a745' }} type="submit">Post Log</button>
             </form>
           </div>
         )}
 
         <div style={cardStyle}>
-          <h2 style={{marginTop: 0, fontSize: '20px'}}>Coach Dialogue</h2>
-          
+          <h2 style={{ marginTop: 0, fontSize: '20px' }}>Coach Dialogue</h2>
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px', maxHeight: '400px', overflowY: 'auto', padding: '10px', background: '#fcfcfc', borderRadius: '8px' }}>
             {chatHistory.length === 0 && <div style={{ textAlign: 'center', color: '#999', padding: '20px' }}>No conversation history yet.</div>}
             {chatHistory.map((msg, i) => (
-              <div key={i} style={{ 
+              <div key={i} style={{
                 alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
                 background: msg.role === 'user' ? '#007BFF' : '#f1f3f5',
                 color: msg.role === 'user' ? 'white' : '#333',
@@ -367,26 +371,26 @@ export default function GoalDetail() {
               </div>
             ))}
             {isChatLoading && (
-               <div style={{ alignSelf: 'flex-start', background: '#f1f3f5', padding: '12px 18px', borderRadius: '18px', borderBottomLeftRadius: '2px' }}>
-                 <em style={{ color: '#666' }}>Coach is contemplating...</em>
-               </div>
+              <div style={{ alignSelf: 'flex-start', background: '#f1f3f5', padding: '12px 18px', borderRadius: '18px', borderBottomLeftRadius: '2px' }}>
+                <em style={{ color: '#666' }}>Coach is contemplating...</em>
+              </div>
             )}
           </div>
 
           {isMine ? (
             <form onSubmit={handleChat} style={{ display: 'flex', gap: '10px' }}>
-              <input 
-                style={{...inputStyle, flex: 1}} 
-                type="text" 
-                placeholder="Ask your coach anything..." 
-                value={chatMsg} 
-                onChange={e => setChatMsg(e.target.value)} 
+              <input
+                style={{ ...inputStyle, flex: 1 }}
+                type="text"
+                placeholder="Ask your coach anything..."
+                value={chatMsg}
+                onChange={e => setChatMsg(e.target.value)}
               />
               <button style={btnStyle} type="submit" disabled={isChatLoading}>Send</button>
             </form>
           ) : (
             <div style={{ textAlign: 'center', padding: '15px', background: '#fff9db', borderRadius: '8px', fontSize: '14px', border: '1px solid #ffec99' }}>
-               Coach Chat is private to the goal owner.
+              Coach Chat is private to the goal owner.
             </div>
           )}
         </div>
