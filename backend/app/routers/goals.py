@@ -24,11 +24,11 @@ class GoalUpdate(BaseModel):
 
 @router.get("/")
 async def get_goals(authorization: Optional[str] = Header(None)):
-    headers = {"Authorization": authorization} if authorization else {}
+    headers = {"Authorization": authorization.removeprefix("Bearer ")} if authorization else {}
     async with httpx.AsyncClient() as client:
         response = await client.get(
             f"{PB_URL}/api/collections/goals/records",
-            params={"expand": "user_id", "sort": "-created"},
+            params={},
             headers=headers
         )
         if response.status_code != 200:
@@ -37,11 +37,10 @@ async def get_goals(authorization: Optional[str] = Header(None)):
 
 @router.get("/{goal_id}")
 async def get_goal(goal_id: str, authorization: Optional[str] = Header(None)):
-    headers = {"Authorization": authorization} if authorization else {}
+    headers = {"Authorization": authorization.removeprefix("Bearer ")} if authorization else {}
     async with httpx.AsyncClient() as client:
         response = await client.get(
             f"{PB_URL}/api/collections/goals/records/{goal_id}",
-            params={"expand": "user_id"},
             headers=headers
         )
         if response.status_code != 200:
@@ -50,18 +49,17 @@ async def get_goal(goal_id: str, authorization: Optional[str] = Header(None)):
 
 @router.post("/")
 async def create_goal(goal: GoalCreate, authorization: Optional[str] = Header(None)):
-    headers = {"Authorization": authorization} if authorization else {}
+    headers = {"Authorization": authorization.removeprefix("Bearer ")} if authorization else {}
     async with httpx.AsyncClient() as client:
         response = await client.post(
             f"{PB_URL}/api/collections/goals/records",
             json={
                 "user_id": goal.user_id,
                 "title": goal.title,
-                "category": goal.category,
+                "goal_type": goal.category,
                 "description": goal.description,
                 "start_date": goal.start_date,
-                "end_date": goal.end_date,
-                "is_active": True
+                "end_date": goal.end_date
             },
             headers=headers
         )
@@ -71,7 +69,7 @@ async def create_goal(goal: GoalCreate, authorization: Optional[str] = Header(No
 
 @router.patch("/{goal_id}")
 async def update_goal(goal_id: str, goal: GoalUpdate, authorization: Optional[str] = Header(None)):
-    headers = {"Authorization": authorization} if authorization else {}
+    headers = {"Authorization": authorization.removeprefix("Bearer ")} if authorization else {}
     async with httpx.AsyncClient() as client:
         response = await client.patch(
             f"{PB_URL}/api/collections/goals/records/{goal_id}",

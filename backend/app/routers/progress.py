@@ -18,7 +18,7 @@ class ProgressCreate(BaseModel):
 
 @router.get("/{goal_id}/summary")
 async def get_progress_summary(goal_id: str, authorization: Optional[str] = Header(None)):
-    headers = {"Authorization": authorization} if authorization else {}
+    headers = {"Authorization": authorization.removeprefix("Bearer ")} if authorization else {}
     async with httpx.AsyncClient() as client:
         goal_resp = await client.get(
             f"{PB_URL}/api/collections/goals/records/{goal_id}",
@@ -33,8 +33,8 @@ async def get_progress_summary(goal_id: str, authorization: Optional[str] = Head
         logs_resp = await client.get(
             f"{PB_URL}/api/collections/progress_logs/records",
             params={
-                "filter": f'goal_id="{goal_id}"',
-                "sort": "created"
+                "filter": f"goal_id='{goal_id}'",
+                
             },
             headers=headers
         )
@@ -130,28 +130,28 @@ async def get_progress_summary(goal_id: str, authorization: Optional[str] = Head
             "all_logs_count": all_logs_count,
             "primary_logs_count": primary_logs_count,
             "progress_percent": progress_percent,
-            "history": [{"value": i["value"], "unit": i["unit"], "created": i["created"]} for i in primary_logs]
+            "history": [{"value": i["value"], "unit": i.get("unit", ""), "created": i.get("created", i.get("date", ""))} for i in primary_logs]
         }
 
 @router.get("/{goal_id}")
 async def get_progress(goal_id: str, authorization: Optional[str] = Header(None)):
-    headers = {"Authorization": authorization} if authorization else {}
+    headers = {"Authorization": authorization.removeprefix("Bearer ")} if authorization else {}
     async with httpx.AsyncClient() as client:
         response = await client.get(
             f"{PB_URL}/api/collections/progress_logs/records",
             params={
-                "filter": f'goal_id="{goal_id}"',
-                "sort": "-created"
+                "filter": f"goal_id='{goal_id}'",
+                
             },
             headers=headers
         )
         if not response.is_success:
-            raise HTTPException(status_code=response.status_code, detail=f"Failed to fetch progress: {response.text}")
+            raise HTTPException(status_code=400, detail=f"PB said: {response.status_code} - {response.text}")
         return response.json()
 
 @router.post("/")
 async def log_progress(progress: ProgressCreate, authorization: Optional[str] = Header(None)):
-    headers = {"Authorization": authorization} if authorization else {}
+    headers = {"Authorization": authorization.removeprefix("Bearer ")} if authorization else {}
     async with httpx.AsyncClient() as client:
         response = await client.post(
             f"{PB_URL}/api/collections/progress_logs/records",

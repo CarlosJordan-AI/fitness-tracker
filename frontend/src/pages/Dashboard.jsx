@@ -31,7 +31,7 @@ export default function Dashboard() {
   const fetchGoals = async () => {
     try {
       // Get goals with expanded user data
-      const res = await fetch(`${API_URL}/goals/?expand=user_id`, {
+      const res = await fetch(`${API_URL}/goals/`, {
         headers: {
           'Authorization': pb.authStore.token
         }

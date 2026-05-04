@@ -43,7 +43,7 @@ export default function GoalDetail() {
   const fetchGoalData = async () => {
     try {
       // Fetch goal with expanded user info
-      const res = await fetch(`${API_URL}/goals/${id}?expand=user_id`, {
+      const res = await fetch(`${API_URL}/goals/${id}`, {
         headers: { 'Authorization': pb.authStore.token }
       });
       const g = await res.json();
