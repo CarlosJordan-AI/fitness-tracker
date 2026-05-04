@@ -79,3 +79,15 @@ async def update_goal(goal_id: str, goal: GoalUpdate, authorization: Optional[st
         if response.status_code != 200:
             raise HTTPException(status_code=400, detail="Failed to update goal")
         return response.json()
+
+@router.delete("/{goal_id}")
+async def delete_goal(goal_id: str, authorization: Optional[str] = Header(None)):
+    headers = {"Authorization": authorization.removeprefix("Bearer ")} if authorization else {}
+    async with httpx.AsyncClient() as client:
+        response = await client.delete(
+            f"{PB_URL}/api/collections/goals/records/{goal_id}",
+            headers=headers
+        )
+        if response.status_code != 204:
+            raise HTTPException(status_code=400, detail="Failed to delete goal")
+        return {"status": "success"}

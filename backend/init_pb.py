@@ -67,8 +67,8 @@ async def init_pocketbase():
                     "listRule": "@request.auth.id != ''",
                     "viewRule": "@request.auth.id != ''",
                     "createRule": "@request.auth.id != ''",
-                    "updateRule": "@request.auth.id != ''",
-                    "deleteRule": "@request.auth.id != ''"
+                    "updateRule": "user_id = @request.auth.id",
+                    "deleteRule": "user_id = @request.auth.id"
                 })
             else:
                 print(f"Collection {name} confirmed.")

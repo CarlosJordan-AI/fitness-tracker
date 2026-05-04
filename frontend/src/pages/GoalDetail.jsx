@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import pb from '../lib/pocketbase';
-import { API_URL, getGoal, updateGoal, generatePlan, getProgress, logProgress, sendMessage, getChatHistory, getProgressSummary } from '../lib/api';
+import { API_URL, getGoal, updateGoal, deleteGoal, generatePlan, getProgress, logProgress, sendMessage, getChatHistory, getProgressSummary } from '../lib/api';
 import Navbar from '../components/Navbar';
 
 function renderMarkdown(text) {
@@ -112,6 +112,19 @@ export default function GoalDetail() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!isMine) return;
+    if (!window.confirm("Are you sure you want to delete this goal and all its progress? This action cannot be undone.")) return;
+    
+    try {
+      await deleteGoal(id);
+      navigate('/dashboard');
+    } catch (e) {
+      console.error(e);
+      alert('Failed to delete goal');
+    }
+  };
+
   const handleChat = async (e) => {
     e.preventDefault();
     if (!chatMsg || !isMine) return;
@@ -190,6 +203,23 @@ export default function GoalDetail() {
             <div style={{ textAlign: 'right', fontSize: '14px', color: '#666' }}>
               <div>Managed by <strong>{isMine ? 'You' : ownerName}</strong></div>
               <div style={{ marginTop: '5px' }}>{goal.is_active ? '✅ Active' : '⏸️ Inactive'}</div>
+              {isMine && (
+                <button 
+                  onClick={handleDelete}
+                  style={{ 
+                    marginTop: '10px', 
+                    padding: '5px 10px', 
+                    background: '#fff', 
+                    color: '#dc3545', 
+                    border: '1px solid #dc3545', 
+                    borderRadius: '4px', 
+                    cursor: 'pointer',
+                    fontSize: '12px'
+                  }}
+                >
+                  Delete Goal
+                </button>
+              )}
             </div>
           </div>
           

@@ -43,6 +43,15 @@ export async function updateGoal(id, data) {
   return res.json();
 }
 
+export async function deleteGoal(id) {
+  const res = await fetch(`${API_URL}/goals/${id}`, {
+    method: 'DELETE',
+    headers: getHeaders()
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
 export async function getProgress(goalId) {
   const res = await fetch(`${API_URL}/progress/${goalId}`, { headers: getHeaders() });
   if (!res.ok) throw new Error(await res.text());
