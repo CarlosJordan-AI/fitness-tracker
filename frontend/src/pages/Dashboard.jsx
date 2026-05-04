@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import pb from '../lib/pocketbase';
-import { getGoals, getProgressSummary } from '../lib/api';
+import { API_URL, getProgressSummary } from '../lib/api';
 import Navbar from '../components/Navbar';
 
 export default function Dashboard() {
@@ -31,7 +31,7 @@ export default function Dashboard() {
   const fetchGoals = async () => {
     try {
       // Get goals with expanded user data
-      const res = await fetch(`http://localhost:8000/goals/?expand=user_id`, {
+      const res = await fetch(`${API_URL}/goals/?expand=user_id`, {
         headers: {
           'Authorization': pb.authStore.token
         }

@@ -10,6 +10,7 @@ router = APIRouter()
 PB_URL = os.getenv("POCKETBASE_URL", "http://pocketbase:8090")
 
 class ProgressCreate(BaseModel):
+    user_id: str
     goal_id: str
     value: float
     unit: str
@@ -23,8 +24,8 @@ async def get_progress_summary(goal_id: str, authorization: Optional[str] = Head
             f"{PB_URL}/api/collections/goals/records/{goal_id}",
             headers=headers
         )
-        if goal_resp.status_code != 200:
-            raise HTTPException(status_code=404, detail="Goal not found")
+        if not goal_resp.is_success:
+            raise HTTPException(status_code=goal_resp.status_code, detail=f"Goal not found or access denied: {goal_resp.text}")
         goal_data = goal_resp.json()
         category = goal_data.get("category", "weight_loss")
         target_value = goal_data.get("target_value")
@@ -37,8 +38,8 @@ async def get_progress_summary(goal_id: str, authorization: Optional[str] = Head
             },
             headers=headers
         )
-        if logs_resp.status_code != 200:
-            raise HTTPException(status_code=400, detail="Failed to fetch progress")
+        if not logs_resp.is_success:
+            raise HTTPException(status_code=logs_resp.status_code, detail=f"Failed to fetch progress logs: {logs_resp.text}")
         
         logs_data = logs_resp.json()
         items = logs_data.get("items", [])
@@ -144,8 +145,8 @@ async def get_progress(goal_id: str, authorization: Optional[str] = Header(None)
             },
             headers=headers
         )
-        if response.status_code != 200:
-            raise HTTPException(status_code=400, detail="Failed to fetch progress")
+        if not response.is_success:
+            raise HTTPException(status_code=response.status_code, detail=f"Failed to fetch progress: {response.text}")
         return response.json()
 
 @router.post("/")
@@ -155,13 +156,15 @@ async def log_progress(progress: ProgressCreate, authorization: Optional[str] = 
         response = await client.post(
             f"{PB_URL}/api/collections/progress_logs/records",
             json={
+                "user_id": progress.user_id,
                 "goal_id": progress.goal_id,
                 "value": progress.value,
                 "unit": progress.unit,
-                "note": progress.note
+                "note": progress.note,
+                "notes": progress.note  # Support both singular and plural for safety
             },
             headers=headers
         )
-        if response.status_code != 200:
-            raise HTTPException(status_code=400, detail="Failed to log progress")
+        if not response.is_success:
+            raise HTTPException(status_code=response.status_code, detail=f"Failed to log progress: {response.text}")
         return response.json()

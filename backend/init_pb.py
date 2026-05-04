@@ -61,7 +61,7 @@ async def init_pocketbase():
                     headers=admin_headers
                 )
                 
-                # Set rules for 'progress_logs'
+                # Set rules and fields for 'progress_logs'
                 await client.patch(
                     f"{PB_URL}/api/collections/progress_logs",
                     json={
@@ -69,7 +69,15 @@ async def init_pocketbase():
                         "viewRule": "@request.auth.id != \"\"",
                         "createRule": "@request.auth.id != \"\"",
                         "updateRule": "goal_id.user_id = @request.auth.id",
-                        "deleteRule": "goal_id.user_id = @request.auth.id"
+                        "deleteRule": "goal_id.user_id = @request.auth.id",
+                        "schema": [
+                            {"name": "goal_id", "type": "relation", "required": True, "options": {"collectionId": "goals", "maxSelect": 1}},
+                            {"name": "user_id", "type": "relation", "required": True, "options": {"collectionId": "users", "maxSelect": 1}},
+                            {"name": "value", "type": "number", "required": True},
+                            {"name": "unit", "type": "text", "required": True},
+                            {"name": "note", "type": "text"},
+                            {"name": "notes", "type": "text"}
+                        ]
                     },
                     headers=admin_headers
                 )

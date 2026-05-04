@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import pb from '../lib/pocketbase';
-import { getGoal, updateGoal, generatePlan, getProgress, logProgress, sendMessage, getChatHistory, getProgressSummary } from '../lib/api';
+import { API_URL, getGoal, updateGoal, generatePlan, getProgress, logProgress, sendMessage, getChatHistory, getProgressSummary } from '../lib/api';
 import Navbar from '../components/Navbar';
 
 function renderMarkdown(text) {
@@ -43,7 +43,7 @@ export default function GoalDetail() {
   const fetchGoalData = async () => {
     try {
       // Fetch goal with expanded user info
-      const res = await fetch(`http://localhost:8000/goals/${id}?expand=user_id`, {
+      const res = await fetch(`${API_URL}/goals/${id}?expand=user_id`, {
         headers: { 'Authorization': pb.authStore.token }
       });
       const g = await res.json();
@@ -100,7 +100,7 @@ export default function GoalDetail() {
     if (!isMine) return;
     e.preventDefault();
     try {
-      await logProgress({ goal_id: id, value: parseFloat(val), unit, note });
+      await logProgress({ user_id: currentUser.id, goal_id: id, value: parseFloat(val), unit, note });
       setVal(''); setUnit(''); setNote('');
       const p = await getProgress(id);
       setProgressLogs(p.items || []);

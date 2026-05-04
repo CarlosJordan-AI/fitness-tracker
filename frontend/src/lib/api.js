@@ -1,12 +1,12 @@
 import pb from './pocketbase';
 
-export const API_URL = "http://localhost:8000";
+export const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 function getHeaders() {
   const token = pb.authStore.token;
   return {
     'Content-Type': 'application/json',
-    ...(token && { 'Authorization': `Bearer ${token}` })
+    ...(token && { 'Authorization': token })
   };
 }
 
@@ -45,11 +45,13 @@ export async function updateGoal(id, data) {
 
 export async function getProgress(goalId) {
   const res = await fetch(`${API_URL}/progress/${goalId}`, { headers: getHeaders() });
+  if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
 
 export async function getProgressSummary(goalId) {
   const res = await fetch(`${API_URL}/progress/${goalId}/summary`, { headers: getHeaders() });
+  if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
 
@@ -59,6 +61,7 @@ export async function logProgress(data) {
     headers: getHeaders(),
     body: JSON.stringify(data)
   });
+  if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
 

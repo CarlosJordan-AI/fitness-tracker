@@ -77,8 +77,8 @@ async def send_message(chat: ChatMessage, authorization: Optional[str] = Header(
     try:
         async with httpx.AsyncClient() as client:
             summary_resp = await client.get(
-                f"{PB_URL.replace('pocketbase', 'localhost') if 'localhost' in PB_URL else PB_URL}/api/collections/progress_logs/records",
-                params={"filter": f'goal_id="{chat.goal_id}"', "sort": "created"},
+                f"{PB_URL}/api/collections/progress_logs/records",
+                params={"filter": f'goal_id = "{chat.goal_id}"', "sort": "created"},
                 headers=headers
             )
             # Actually we can just call our other router or replicate logic
@@ -142,7 +142,7 @@ async def get_history(goal_id: str, authorization: Optional[str] = Header(None))
     async with httpx.AsyncClient() as client:
         r = await client.get(
             f"{PB_URL}/api/collections/ai_chats/records",
-            params={"filter": f'goal_id="{goal_id}"', "sort": "created"},
+            params={"filter": f'goal_id = "{goal_id}"', "sort": "created"},
             headers=headers
         )
         return r.json()
