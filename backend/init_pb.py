@@ -1,117 +1,87 @@
 import httpx
 import asyncio
 import os
-import time
 
 PB_URL = os.getenv("POCKETBASE_URL", "http://pocketbase:8090")
 ADMIN_EMAIL = os.getenv("POCKETBASE_ADMIN_EMAIL", "admin@fit.com")
 ADMIN_PASSWORD = os.getenv("POCKETBASE_ADMIN_PASSWORD", "Fitness123!")
 
 async def init_pocketbase():
-    print(f"Waiting for PocketBase at {PB_URL}...")
+    print(f"Initializing PocketBase at {PB_URL}...")
     async with httpx.AsyncClient() as client:
-        # Wait for PocketBase to be ready
-        success = False
-        for _ in range(20):
+        # 1. Wait for PocketBase
+        for _ in range(30):
             try:
-                resp = await client.get(f"{PB_URL}/api/health")
-                if resp.status_code == 200:
-                    success = True
-                    break
-            except Exception:
-                pass
+                if (await client.get(f"{PB_URL}/api/health")).status_code == 200: break
+            except: pass
             await asyncio.sleep(2)
-        
-        if not success:
-            print("PocketBase not reachable. Skipping init.")
-            return
 
+        # 2. Authenticate or Create Admin
         try:
-            # Try to create the admin
-            await client.post(
-                f"{PB_URL}/api/admins",
-                json={
-                    "email": ADMIN_EMAIL,
-                    "password": ADMIN_PASSWORD,
-                    "passwordConfirm": ADMIN_PASSWORD
-                }
-            )
-            
-            # Authenticate as admin
-            auth_resp = await client.post(
-                f"{PB_URL}/api/admins/auth-with-password",
-                json={"identity": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
-            )
-            
-            if auth_resp.status_code == 200:
-                token = auth_resp.json().get("token")
-                admin_headers = {"Authorization": token}
-                print("Authenticated as admin. Setting collection rules...")
+            await client.post(f"{PB_URL}/api/admins", json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD, "passwordConfirm": ADMIN_PASSWORD})
+        except: pass
+        
+        auth_resp = await client.post(f"{PB_URL}/api/admins/auth-with-password", json={"identity": ADMIN_EMAIL, "password": ADMIN_PASSWORD})
+        if auth_resp.status_code != 200:
+            print("Failed to authenticate as admin.")
+            return
+        headers = {"Authorization": auth_resp.json()["token"]}
 
-                # Set rules and schema for 'goals'
-                await client.patch(
-                    f"{PB_URL}/api/collections/goals",
-                    json={
-                        "listRule": "@request.auth.id != \"\"",
-                        "viewRule": "@request.auth.id != \"\"",
-                        "createRule": "@request.auth.id != \"\"",
-                        "updateRule": "user_id = @request.auth.id",
-                        "deleteRule": "user_id = @request.auth.id",
-                        "schema": [
-                            {"name": "user_id", "type": "relation", "required": True, "options": {"collectionId": "_pb_users_auth_", "maxSelect": 1}},
-                            {"name": "title", "type": "text", "required": True},
-                            {"name": "category", "type": "text", "required": True},
-                            {"name": "description", "type": "text"},
-                            {"name": "start_date", "type": "date", "required": True},
-                            {"name": "end_date", "type": "date", "required": True},
-                            {"name": "is_active", "type": "bool"},
-                            {"name": "target_value", "type": "number"},
-                            {"name": "ai_plan", "type": "text"}
-                        ]
-                    },
-                    headers=admin_headers
-                )
-                
-                # Set rules and fields for 'progress_logs'
-                await client.patch(
-                    f"{PB_URL}/api/collections/progress_logs",
-                    json={
-                        "listRule": "@request.auth.id != \"\"",
-                        "viewRule": "@request.auth.id != \"\"",
-                        "createRule": "@request.auth.id != \"\"",
-                        "updateRule": "goal_id.user_id = @request.auth.id",
-                        "deleteRule": "goal_id.user_id = @request.auth.id",
-                        "schema": [
-                            {"name": "goal_id", "type": "relation", "required": True, "options": {"collectionId": "goals", "maxSelect": 1}},
-                            {"name": "user_id", "type": "relation", "required": True, "options": {"collectionId": "users", "maxSelect": 1}},
-                            {"name": "value", "type": "number", "required": True},
-                            {"name": "unit", "type": "text", "required": True},
-                            {"name": "note", "type": "text"},
-                            {"name": "notes", "type": "text"}
-                        ]
-                    },
-                    headers=admin_headers
-                )
+        # 3. Define Collections
+        collections = [
+            {
+                "name": "goals",
+                "schema": [
+                    {"name": "user_id", "type": "relation", "required": True, "options": {"collectionId": "_pb_users_auth_", "maxSelect": 1}},
+                    {"name": "title", "type": "text", "required": True},
+                    {"name": "category", "type": "text"},
+                    {"name": "description", "type": "text"},
+                    {"name": "start_date", "type": "date"},
+                    {"name": "end_date", "type": "date"},
+                    {"name": "is_active", "type": "bool"},
+                    {"name": "ai_plan", "type": "text"}
+                ]
+            },
+            {
+                "name": "progress_logs",
+                "schema": [
+                    {"name": "goal_id", "type": "relation", "required": True, "options": {"collectionId": "goals", "maxSelect": 1}},
+                    {"name": "user_id", "type": "relation", "required": True, "options": {"collectionId": "_pb_users_auth_", "maxSelect": 1}},
+                    {"name": "value", "type": "number", "required": True},
+                    {"name": "unit", "type": "text"},
+                    {"name": "note", "type": "text"}
+                ]
+            },
+            {
+                "name": "ai_chats",
+                "schema": [
+                    {"name": "goal_id", "type": "relation", "required": True, "options": {"collectionId": "goals", "maxSelect": 1}},
+                    {"name": "user_id", "type": "relation", "required": True, "options": {"collectionId": "_pb_users_auth_", "maxSelect": 1}},
+                    {"name": "role", "type": "text"},
+                    {"name": "message", "type": "text"}
+                ]
+            }
+        ]
 
-                # Set rules for 'ai_chats'
-                await client.patch(
-                    f"{PB_URL}/api/collections/ai_chats",
-                    json={
-                        "listRule": "user_id = @request.auth.id",
-                        "viewRule": "user_id = @request.auth.id",
-                        "createRule": "@request.auth.id != \"\"",
-                        "updateRule": "user_id = @request.auth.id",
-                        "deleteRule": "user_id = @request.auth.id"
-                    },
-                    headers=admin_headers
-                )
-                
-                print("PocketBase initialized successfully.")
+        for coll in collections:
+            # Check if exists
+            check = await client.get(f"{PB_URL}/api/collections/{coll['name']}", headers=headers)
+            if check.status_code != 200:
+                print(f"Creating collection: {coll['name']}")
+                await client.post(f"{PB_URL}/api/collections", headers=headers, json={
+                    **coll,
+                    "type": "base",
+                    "listRule": "@request.auth.id != ''",
+                    "viewRule": "@request.auth.id != ''",
+                    "createRule": "@request.auth.id != ''",
+                    "updateRule": "@request.auth.id != ''",
+                    "deleteRule": "@request.auth.id != ''"
+                })
             else:
-                print("Could not authenticate as admin.")
-                
-        except Exception as e:
-            print(f"Error during PocketBase init: {e}")
+                print(f"Updating collection: {coll['name']}")
+                await client.patch(f"{PB_URL}/api/collections/{coll['name']}", headers=headers, json=coll)
+
+        print("PocketBase fully initialized.")
 
 if __name__ == "__main__":
     asyncio.run(init_pocketbase())
